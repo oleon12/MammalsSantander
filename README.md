@@ -16,10 +16,14 @@ To run this project locally:
 ### 2. Get the Project Files  
 ```bash
 git clone https://github.com/yourusername/your-repo.git
-
+```
 ----
 
 ### Run the project
 
+- Open Project_2.Rmd in RStudio
+- Install required packages:
+
 ```r
 install.packages(c("shiny", "rmarkdown", "dplyr", "ggplot2"))
+```
