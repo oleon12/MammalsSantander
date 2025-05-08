@@ -6,7 +6,7 @@ All results are available in the interactive Rmarkdown:
 🔗 [Explore the Doc Here](https://rpubs.com/oleon12/MammalsSantander)
 
 #### Download the Rmarkdown HTML file
-The Rmarkdown is also available as [HTML file Here]()
+The Rmarkdown is also available as [HTML file Here](https://github.com/oleon12/MammalsSantander)
 
 ## 📊 Shiny App Dashboard  
 All results are available in the interactive Shiny App:  
