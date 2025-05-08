@@ -17,7 +17,7 @@ To run this project locally:
 ```bash
 git clone https://github.com/yourusername/your-repo.git
 ```
-Or download as ZIP from GitHub.
+#### Or download as ZIP from GitHub.
 ----
 
 ### 3. Run the Project
