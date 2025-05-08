@@ -1,0 +1,499 @@
+---
+title: "Mammals of Santander"
+runtime: shiny
+output: html_document
+---
+
+#### **Omar Daniel Leon-Alvarado**
+
+---
+
+## **Introduction**
+
+Santander is a department of Colombia located in the northeast of the country, about eight hours from the capital city, Bogotá. Approximately 4.5 million people inhabit this department, with half of the population (~2 million) concentrated in the capital city, Bucaramanga, and its metropolitan area. Santander lies above the Eastern Cordillera and the Magdalena Valley, which gives it a wide variety of elevations. In fact, the department's elevation ranges from 0 to 4,800 meters above sea level. In the tropics, temperature and precipitation are highly correlated with elevation; thus, areas at different elevations experience different climates and host distinct ecosystems.
+
+Santander includes five main biomes:
+
++ **Humid Biome**: Corresponds to the Tropical Humid Forest in the Middle Magdalena Valley. This biome is found in the lowlands (<1000 m.a.s.l.) and is characterized by high temperatures (20–35 °C) and year-round humidity (around 90%).
+
++ **Azonal Biome:** A unique biome located between the Eastern Cordillera and the Serranía de los Yariguíes. It consists of xeric forest enclaves within the Chicamocha Canyon and its surrounding areas. Although this biome ranges from 250 to 950 m.a.s.l., its distinct characteristics result in a wide range of weather conditions, from 11 °C to 28 °C.
+
++ **Sub-Andean Biome:** Represents the transitional forests between the lowlands and the Andes (1000–2000 m.a.s.l.). This biome features steep mountainous terrain, moderate temperatures (18 °C to 28 °C), and relatively lower humidity.
+
++ **Andean Biome:** The most common biome along the Andes Cordillera, found between 2000 and 3500 m.a.s.l. It includes diverse ecosystems such as montane and cloud forests. Here, temperatures range from 25 °C down to 10 °C.
+
++ **Páramo:** A unique biome found only in certain high-elevation mountain regions around the world. In Santander, the páramo is located above 3500 m.a.s.l. It is characterized by a unique composition of flora, high precipitation, and cold temperatures (0 °C to 20 °C).
+ 
+<br><br>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=F, warning=FALSE, message=FALSE, prompt=FALSE, results='hide'}
+library(plotly)
+library(ggplot2)
+library(dplyr)
+library(ggmosaic)
+library(scales)
+library(sf)
+library(terra)
+library(ggdendro)
+library(tidyr)
+library(leaflet.extras)
+library(leaflet)
+library(htmltools)
+library(htmlwidgets)
+library(raster)
+library(RColorBrewer)
+library(viridis)
+library(viridisLite)
+
+data1 <- read.delim("Data/Occ_Clean_1.csv")
+
+dataSp <- data1[-which(data1$Species==""),]
+dataSp <- dataSp[-which(is.na(dataSp$Longitude)), ]
+
+Santander <- read_sf("shp/Santander_outline.R.gpkg")
+SantanderB <- read_sf("shp/Santander_Biomas2.gpkg")
+pts <- vect(dataSp, geom = c("Longitude", "Latitude"), crs = "EPSG:4326")
+pts2 <- st_as_sf(dataSp, coords = c("Longitude", "Latitude"), crs = "EPSG:4326")
+
+st_crs(Santander) <- 4326
+
+elevation <- raster::raster("Img/Elevation.tif")
+
+#############################################################
+
+raster_template <- rast(ext(pts), resolution = 0.1)
+species_raster <- rasterize(pts, raster_template, 
+                            field = "Species", 
+                            fun = function(x) length(unique(x)))
+
+occurrences_raster <- rasterize(pts, raster_template, fun = length)
+
+
+###########################################################
+
+biome_colors <- c("#f59053","#91cba8","#ddf1b4","#d7191c","#fedf99" )
+names(biome_colors) <- c("Azonal","Paramo","Andes","Humid","Sub-Andes")
+biome_colors <- biome_colors[sort(names(biome_colors))]
+
+
+mod.elevation <- colorNumeric(palette = "BrBG", domain = c(values(elevation) %>% na.omit()), na.color = NA, reverse = T)
+mod.biome <- colorFactor(palette = biome_colors, 
+                         domain = names(biome_colors), na.color = NA, reverse = F)
+
+#######################################
+
+map2 <- leaflet(options = leafletOptions(minZoom = 2)) %>%
+  addMapPane("rasterPane", zIndex = 410) %>% 
+  addProviderTiles("Esri", group = "Esri") %>%
+  addProviderTiles("CartoDB", group = "Carto") %>%
+  setView(lng = -73.452, lat = 6.971, zoom = 7.5) %>%
+  
+  ########### Model ###############
+addRasterImage(x = elevation, group = "Elevation", color = mod.elevation, opacity = 1, options(pane = "rasterPane")) %>%
+  addLegend( pal = mod.elevation, values = values(elevation) %>% na.omit(), position = "bottomleft",
+    group = "Elevation", opacity = 1, title = "Elevation m.a.s.l.") %>%
+  
+  addPolygons(data = Santander, group = "Santander", weight = 1,
+              fillColor = NA, fillOpacity = 0, color = "black", opacity = 0.75) %>%
+  
+  addPolygons(data = SantanderB, group = "Biomes", weight = 1, popup = ~paste("<strong>Biome:</strong>", NAME),label=~NAME,
+              fillColor = ~mod.biome(NAME), fillOpacity = 0.75, opacity = 0.75) %>%
+  addLegend( pal = mod.biome, values = names(biome_colors), position = "bottomright", title = "Biomes",
+             opacity = 1,group = "Biomes") %>%
+  
+  addLayersControl(
+    baseGroups = c("Carto", "Esri"),
+    overlayGroups = c("Elevation", "Biomes")
+  ) %>%
+  
+  hideGroup(c("Elevation"))
+
+```
+
+```{r, prompt=FALSE, warning=FALSE, message=FALSE, echo=FALSE, fig.align='center'}
+browsable(
+  div(style = "display: flex; justify-content: center;",
+      div(style="width: 1000px;",map2)
+  )
+)
+```
+<div style="text-align: center;">
+<p>*<b>Figure 1.</b> Maps showing the biomes and elevation of the Santander department. Click the layer icon in the top right to switch between layers.*</p>
+</div>
+
+<br><br>
+
+Due to this ecological heterogeneity, Santander has the potential to harbor a high diversity of plant and animal species. In this project, I focus specifically on the diversity of mammals across the department. Mammals are a key component of biodiversity and play essential roles in ecosystem functioning, such as seed dispersal, pollination, and predation. Understanding their distribution and richness across different biomes is crucial for conservation planning.
+
+This study aims to address the following questions:
+
++ **How many mammal species inhabit the department of Santander?**
++ **How many mammal records have been documented in Santander?**
++ **How does species composition vary across the department's biomes?**
+
+<br><br>
+
+---
+
+## **Materials and Methods**
+
+<br><br>
+
+I gathered all the information from the Global Biodiversity Information Facility (GBIF) by downloading all available records for the department of Santander  ([DOI](https://doi.org/10.15468/dl.vub83d )). After obtaining the data, I cleaned and filtered the records. First, I removed all occurrences of invasive species such as dogs (*Canis lupus familiaris*), cats (*Felis silvestris*), and cattle (e.g., *Bos taurus*). I also excluded fossil species reported in the area. Finally, using QGIS (version 3.40.3–Bratislava), I inspected all occurrence points and deleted those located outside the department boundaries.
+
+With the cleaned dataset, I first quantified the number of different record types (e.g., **Preserved specimen**, **Human observation**). I also calculated the number of occurrences and species over time. To do this, I created two raster files representing the number of occurrences and species per pixel. Additionally, I calculated the Jaccard dissimilarity between biomes and their species composition (Beta-biodiversity). I then visualized the resulting matrix as a heatmap and performed hierarchical clustering using the Ward2 method.
+
+<br><br>
+
+```{r, echo=F, message=FALSE, warning=FALSE, prompt=FALSE}
+mammals <- dataSp
+selectInput("selected_order", "Select Mammal Order:",
+            choices = sort(unique(mammals$Order)),
+            selected = unique(mammals$Order)[1])
+```
+
+```{r, echo=F, message=FALSE, warning=FALSE, prompt=FALSE}
+renderLeaflet({
+  req(input$selected_order)
+
+  filtered_data <- mammals %>%
+    filter(Order == input$selected_order)
+
+  leaflet() %>%
+    addProviderTiles("Esri", group = "Esri") %>%
+    addProviderTiles("CartoDB", group = "Carto") %>%
+    setView(lng = -73.452, lat = 6.971, zoom = 8) %>%
+    addPolygons(data = Santander, group = "Santander", weight = 1,
+                fillColor = NA, fillOpacity = 0, color = "black", opacity = 0.75) %>%
+    addCircleMarkers(
+      data = filtered_data,
+      lng = ~Longitude,
+      lat = ~Latitude,
+      radius = 4,
+      color = "blue",
+      fillOpacity = 0.7,
+      popup = ~paste0("<b>Species:</b> ", Species,
+                      "<br><b>Family:</b> ", Family,
+                      "<br><b>Year:</b> ", Year)
+    )%>%
+     addLayersControl(baseGroups = c("Carto", "Esri")) 
+})
+```
+<div style="text-align: center;">
+<p>*<b>Figure 2.</b> Cleaned occurrences from GBIF. Use the dropdown menu at the top labeled <b>‘Select Mammal Order:’</b> to choose an order; the corresponding points will then be displayed on the map. Click on each point to view information about the species, family, and date. *</p>
+</div>
+---
+
+<br><br>
+
+## **Results**
+
+<br><br>
+
+From the 15,871 occurrences reported in the department, about 87% are from **Machine observations**, while **Preserved specimens** and **Human observations** represent only 3.2% and 5.6%, respectively. However, the pattern changes when considering the number of species. Of the 145 species recorded in the department, **Preserved specimens** and **Human observations documented** 71 and 84 species, respectively, whereas **Machine observations** recorded only 20 species.
+
+<br><br>
+
+```{r, echo=FALSE, prompt=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.dpi=300, fig.height=15}
+basis_count <- dataSp %>% group_by(BasisRecord) %>% summarise(num_records = n_distinct(Species)) 
+basis_count2 <- dataSp %>% group_by(BasisRecord) %>% tally(name = "Count")
+basis_count$Occurrences <- basis_count2$Count
+
+basis_count$BasisRecord <- c("Human observation","Machine observation","Material citation","Preserved specimen")
+
+
+plot1 <- plot_ly(basis_count,
+        labels = ~BasisRecord,
+        values = ~Occurrences,
+        text = ~paste("<b>", BasisRecord, "</b>",
+                      "<br>Records: ", num_records,
+                      "<br>Occurrences: ", Occurrences),
+        hoverinfo = "text",
+        textinfo = "none",  # Hides all labels on the plot
+        marker = list(colors = RColorBrewer::brewer.pal(4, "Pastel1")),
+        hoverlabel = list(bgcolor = "white",
+                          font = list(color = "black", size = 14))) %>%
+  add_pie(hole = 0.4) %>%
+  layout(title="Number of occurrences", showlegend = TRUE,
+         legend = list( orientation = "h", x = 0.5, xanchor = "center", y = -0.2, font = list(size = 20)),
+         margin = list(t = 50, b = 100))
+
+plot2 <- plot_ly(basis_count,
+        labels = ~BasisRecord,
+        values = ~num_records,
+        text = ~paste("<b>", BasisRecord, "</b>",
+                      "<br>Records: ", num_records,
+                      "<br>Occurrences: ", Occurrences),
+        hoverinfo = "text",
+        textinfo = "none",  # Hides all labels on the plot
+        marker = list(colors = RColorBrewer::brewer.pal(4, "Pastel1")),
+        hoverlabel = list(bgcolor = "white",
+                          font = list(color = "black", size = 14))) %>%
+  add_pie(hole = 0.4) %>%
+  layout(title = "Number of species", showlegend = TRUE,
+         legend = list( orientation = "h", x = 0.5, xanchor = "center", y = -0.2, font = list(size = 20)),
+         margin = list(t = 50, b = 100))
+
+browsable(
+  div(style = "display: flex; justify-content: center; gap: 30px;",
+      div(style = "width: 500px; height: 500px;", plot1),
+      div(style = "width: 500px; height: 500px;", plot2)
+  )
+)
+
+```
+<div style="text-align: center;">
+<p>*<b>Figure 3.</b> Number of occurrences (left) and number of species (right) for each type of observation.*</p>
+</div>
+
+<br><br>
+
+When the occurrences are analyzed over time, it is striking that most were recorded in the last 10 years, with over 9,000 occurrences reported during this period. This notable increase is mainly explained by two expeditions led by the local government in 2019 and 2020, **SantanderBio 1 & 2**. Additionally, the launch of iNaturalist in 2007 and its subsequent global popularization contributed to the rise in both Human and Machine observations.
+
+<br><br>
+
+```{r,echo=FALSE, prompt=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.dpi=300, fig.height=5, results='hide'}
+
+species_count <- dataSp %>% group_by(Year) %>% summarise(num_species = n_distinct(Species)) 
+years_count <- dataSp %>% group_by(Year) %>% tally(name = "Occurrences")
+
+TimeData <- cbind(species_count, years_count)
+TimeData <- TimeData[, -3]
+
+ggplot1 <- ggplot(TimeData)+
+  geom_line(aes(x=Year, y=Occurrences), linewidth = .8)+
+  geom_point(aes(x=Year, y=Occurrences, text = paste("Year:", Year,
+                                                     "Species:", num_species,
+                                                     "Occurrences:", Occurrences)))+
+  scale_x_continuous(limits = c(1898,2025), breaks = seq(1890,2025,5))+
+  xlab("Years")+ylab("Occurences")+
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect(colour = "black", fill = NA),
+        panel.grid.major = element_line(colour = "#adb5bd", linetype = "dotted", linewidth = .1),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(siz=8),
+        legend.text = element_text(size=12),
+        legend.position = "bottom",
+        legend.key.width = unit(2, "cm"))
+
+ggplot1 <- ggplotly(ggplot1, tooltip = "text") %>%
+  layout(
+    xaxis = list(
+      rangeslider = list(type = "date"),
+      rangeselector = list(
+        buttons = list(
+          list(count = 10, label = "10y", step = "year", stepmode = "backward"),
+          list(count = 25, label = "25y", step = "year", stepmode = "backward"),
+          list(count = 50, label = "50y", step = "year", stepmode = "backward"),
+          list(label = "All", step = "all")
+        )
+      )
+    ),
+    hoverlabel = list(
+      bgcolor = "white",
+      bordercolor = "black",
+      font = list(size = 12)
+    )
+  ) %>%
+  config(displayModeBar = TRUE)
+
+```
+
+```{r,echo=FALSE, prompt=FALSE, warning=FALSE, message=FALSE}
+browsable(
+  div(style = "display: flex; justify-content: center;",
+      div(style="width: 1000px;",ggplot1)
+  )
+)
+```
+<div style="text-align: center;">
+<p>*<b>Figure 4.</b> Number of occurrences through the years. The bottom graph allows you to select or change the year range.*</p>
+</div>
+<br><br>
+
+Likewise, the spatial distribution of species and occurrence counts is highly biased or influenced by the **SantanderBio 1 & 2** projects. Both raster images show clusters of pixels with high counts of species and occurrences. While the pattern is very clear for occurrences, the species count map reveals more areas with a significant number of records. However, overall, most of the department remains under-sampled.
+
+<br><br>
+```{r, echo=FALSE, prompt=FALSE, warning=FALSE, message=FALSE}
+raster_template <- rast(ext(pts), resolution = 0.1)
+species_raster <- rasterize(pts, raster_template, 
+                            field = "Species", 
+                            fun = function(x) length(unique(x)))
+
+occurrences_raster <- rasterize(pts, raster_template, fun = length)
+
+mod.sp <- colorNumeric(palette = "Spectral", domain = values(species_raster), na.color = NA)
+mod.occ <- colorNumeric(palette = "Spectral", domain = values(occurrences_raster), na.color = NA)
+
+map3 <- leaflet(options = leafletOptions(minZoom = 2)) %>%
+  addMapPane("rasterPane", zIndex = 410) %>% 
+  addProviderTiles("Esri", group = "Esri") %>%
+  addProviderTiles("CartoDB", group = "Carto") %>%
+  setView(lng = -73.452, lat = 6.971, zoom = 7.5) %>%
+  
+  ########### Model ###############
+
+  addRasterImage(x=species_raster, group = "Species Count", color = mod.sp, opacity = 1)%>%
+  addLegend(pal = mod.sp, values = values(species_raster)%>%na.omit(), position = "bottomleft",
+            group = "Species Count", opacity = 1, title = "Number of species") %>%
+  
+  addRasterImage(x = occurrences_raster, group = "Occurrences Count", color=mod.occ, opacity = 1)%>%
+  addLegend(pal=mod.occ, values = values(occurrences_raster)%>%na.omit(), position = "bottomleft",
+            group = "Occurrences Count", opacity = 1, title = "Number of occurrences") %>%
+  
+  addPolygons(data = Santander, group = "Santander", weight = 1,
+              fillColor = NA, fillOpacity = 0, color = "black", opacity = 0.75) %>%
+  
+  addLayersControl(
+    baseGroups = c("Carto", "Esri"),
+    overlayGroups = c("Species Count", "Occurrences Count")
+  ) %>%
+  
+  hideGroup(c("Occurrences Count"))
+
+```
+
+```{r, prompt=FALSE, warning=FALSE, message=FALSE, echo=FALSE, fig.align='center'}
+browsable(
+  div(style = "display: flex; justify-content: center;",
+      div(style="width: 1000px;",map3)
+  )
+)
+```
+<div style="text-align: center;">
+<p>*<b>Figure 5.</b> Raster maps showing the number of occurrences and species per pixel. Click the layer icon in the top right to switch between layers.*</p>
+</div>
+
+<br><br>
+
+Regarding species diversity and richness, bats (**Chiroptera**) were the most diverse group, with 60 recorded species, followed by rodents (**Rodentia**) and carnivores (**Carnivora**), with 25 and 19 species, respectively. This is a common pattern, especially in the Neotropics, where bats and rodents are typically the most diverse mammalian groups. The remaining orders had fewer than 15 species, with **Soricomorpha** and **Sirenia** represented by only a single species each.
+
+<br><br>
+
+```{r, prompt=FALSE, warning=FALSE, message=FALSE, echo=FALSE, fig.align='center'}
+Order_count <- dataSp %>% group_by(Order) %>% summarise(num_species = n_distinct(Species)) 
+
+
+Order_count2 <- Order_count %>%
+  mutate(prop = num_species / sum(num_species))
+
+
+ggplot3 <- ggplot(Order_count2, aes(x = 1, y = prop, fill = Order, text = paste("Order:",Order,"\n",
+                                                                     "Species:",Order_count$num_species,"\n",
+                                                                     "Percentage:",percent(prop, accuracy = 0.1)))) +
+  geom_col(width = 0.3) +
+  scale_fill_brewer(palette = "Paired")+xlab(NULL)+ylab("Proportion")+
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect(colour = "black", fill = NA),
+        panel.grid.major = element_line(colour = "#adb5bd", linetype = "dotted", linewidth = .1),
+        axis.title = element_text(size = 18),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(siz=8),
+        legend.text = element_text(size=12),
+        legend.position = "right",
+        legend.key.width = unit(2, "cm"))
+
+browsable(
+  div(style = "display: flex; justify-content: center;",
+      div(style="width: 1000px; heigth: 1000px;",ggplotly(ggplot3, tooltip = "text"))
+  )
+)
+
+```
+<div style="text-align: center;">
+<p>*<b>Figure 6.</b> Number of species for each order recorded in the Santander department. Hover over each block to see the order's name, number of species, and percentage.*</p>
+</div>
+
+<br><br>
+
+Finally, regarding beta diversity, the five biomes exhibited low similarity values—mostly around 0.65—indicating distinct differences in species composition among them. The highest similarities were observed between the Sub-Andes biome and both the Azonal and Humid biomes (approximately 0.72). In contrast, the Páramo biome showed the lowest similarity values, making it the most distinct in terms of species composition. This pattern is also reflected in the dendrogram, where the Sub-Andes and Humid biomes cluster together, while the Páramo remains clearly separated from the rest.
+
+<br><br>
+
+```{r, prompt=FALSE, warning=FALSE, message=FALSE, echo=FALSE, fig.align='center'}
+biomes <- SantanderB
+st_crs(biomes) <- 4326
+
+biomes_vect <- vect(biomes)
+
+intersect_biomes <- as.data.frame(terra::intersect(pts, biomes_vect))
+
+binary_matrix <- intersect_biomes %>%
+  distinct(Species, NAME) %>%
+  mutate(presence = 1) %>%
+  pivot_wider(names_from = NAME, 
+              values_from = presence,
+              values_fill = 0)%>%
+  as.data.frame()
+
+rownames(binary_matrix) <- binary_matrix$Species
+binary_matrix <- binary_matrix[,-1]
+
+binary_matrix <- t(as.matrix(binary_matrix))
+
+
+jaccard_dist <- vegan::vegdist(binary_matrix, method = "jaccard")
+jaccard_dist <- as.matrix(jaccard_dist)
+
+jaccard2 <- expand_grid(colnames(jaccard_dist),colnames(jaccard_dist))
+jaccard2$Dist <- as.vector(jaccard_dist)
+
+jaccard2 <- as.data.frame(jaccard2)
+colnames(jaccard2) <- c("X","Y", "Dist")
+
+heatmap <- ggplot(jaccard2, aes(x=X, y=Y, fill=Dist, text = Dist))+
+  geom_tile()+
+  scale_fill_viridis_c(option = "D", direction = -1, name = "Distance")+
+  xlab(NULL)+ylab(NULL)+
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect(colour = "black", fill = NA),
+        panel.grid.major = element_line(colour = "#adb5bd", linetype = "dotted", linewidth = .1),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(siz=8),
+        legend.text = element_text(size=12),
+        legend.position = "bottom",
+        legend.key.width = unit(2, "cm"))
+
+
+jaccard_dist <- vegan::vegdist(binary_matrix, method = "jaccard")
+hc <- hclust(jaccard_dist, method = "ward.D2")
+
+ggdendro <- ggdendrogram(hc, rotate = T)  
+
+browsable(
+  div(style = "display: flex; justify-content: center; gap: 30px;",
+      div(style = "width: 300px; height: 400px;", ggplotly(ggdendro)),
+      div(style = "width: 700px; height: 400px;", ggplotly(heatmap, tooltip = "text"))
+  )
+)
+
+```
+<div style="text-align: center;">
+<p>*<b>Figure 7.</b> Cluster analysis based on the Jaccard distance (left) and a heatmap of Jaccard dissimilarity (right). The dissimilarity values between each pair will be displayed when hovering over the heatmap.*</p>
+</div>
+<br><br>
+
+---
+
+## **Conclusions**
+
+<br><br>
+
++ Santander has high ecological and elevational heterogeneity, ranging from 0 to 4,800 m.a.s.l., which supports diverse biomes and, consequently, a rich mammalian fauna. The five major biomes—Humid, Azonal, Sub-Andean, Andean, and Páramo—offer varied habitats and climate conditions.
+
++ The department hosts at least 145 mammal species across 15,871 occurrence records. However, the completeness and diversity of records depend significantly on the data collection method.
+
++ Machine observations dominate in quantity (87%) but contribute relatively little to species richness (only 20 species), likely due to limitations in image/audio classification. In contrast, Human observations and preserved specimens—though fewer in number—contribute more significantly to species richness, documenting 84 and 71 species respectively.
+
++ There has been a sharp increase in occurrence records in the past decade, especially around 2019–2020, due to two large biodiversity expeditions: SantanderBio 1 & 2. The rise of iNaturalist also played a key role in increasing observations starting around 2007.
+
++ Data visualization and spatial analysis (e.g., species richness raster maps, biome overlays, interactive maps by mammal order) provide strong tools for identifying biodiversity hotspots and under-sampled areas, which can guide future sampling and conservation priorities.
+
++ The Jaccard dissimilarity analysis indicates that different biomes host distinct sets of mammal species. This reflects the ecological and climatic variation driven by elevation, temperature, and habitat structure.
+
+<br><br>
