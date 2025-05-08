@@ -16,3 +16,10 @@ To run this project locally:
 ### 2. Get the Project Files  
 ```bash
 git clone https://github.com/yourusername/your-repo.git
+
+----
+
+### Run the project
+
+```r
+install.packages(c("shiny", "rmarkdown", "dplyr", "ggplot2"))
