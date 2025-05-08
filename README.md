@@ -17,9 +17,10 @@ To run this project locally:
 ```bash
 git clone https://github.com/yourusername/your-repo.git
 ```
+Or download as ZIP from GitHub.
 ----
 
-### Run the project
+### 3. Run the Project
 
 - Open Project_2.Rmd in RStudio
 - Install required packages:
@@ -27,3 +28,15 @@ git clone https://github.com/yourusername/your-repo.git
 ```r
 install.packages(c("shiny", "rmarkdown", "dplyr", "ggplot2"))
 ```
+
+- Click Run Document in RStudio
+
+#### ⚠️ Troubleshooting
+
+- If packages fail to install, try:
+
+```r
+install.packages("package_name", dependencies = TRUE)
+```
+
+Ensure all data files are in the correct directory
