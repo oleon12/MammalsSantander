@@ -1,9 +1,18 @@
- Mammals of Santander Project
-</br>
+# Mammals of Santander Project  
 
-# Shiny App
+## 📊 Shiny App Dashboard  
+All results are available in the interactive Shiny App:  
+🔗 [Explore the App Here](https://oleon12.shinyapps.io/Project_2/)  
 
-All of the results are in the Shiny App, you can see (here)[ https://oleon12.shinyapps.io/Project_2/]
+---
 
-# Other alternatives
-If you want, you can download this repository as a ZIP file. Then please you'll need to have installed (R)[https://cran.mirrors.hoobly.com/] and (Rstudio)[https://posit.co/download/rstudio-desktop/]. Then you can open the <b>Project_2.Rmd</b>. Be sure that you have all the package installed and click on <b>Run Document</b>
+## 💻 Local Setup (Alternative)  
+To run this project locally:
+
+### 1. Install Prerequisites  
+- [R](https://cran.r-project.org/) (version 4.0 or higher)  
+- [RStudio](https://posit.co/download/rstudio-desktop/) (recommended)  
+
+### 2. Get the Project Files  
+```bash
+git clone https://github.com/yourusername/your-repo.git
