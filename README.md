@@ -18,7 +18,6 @@ To run this project locally:
 git clone https://github.com/yourusername/your-repo.git
 ```
 #### Or download as ZIP from GitHub.
-----
 
 ### 3. Run the Project
 
